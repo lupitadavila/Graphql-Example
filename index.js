@@ -31,13 +31,25 @@ const schema = buildSchema(`
     body: String!
     userId: ID!
   }
-  type PostError {
-    message: String
-    code: String
+  type NotCreated implements PostError {
+    message: String!
+    code: String!
+  }
+  type NotFound implements PostError {
+    message: String!
+    code: String!
+  }
+  type UnknownError implements PostError {
+    message: String!
+    code: String!
+  }
+  interface PostError {
+    message: String!
+    code: String!
   }
 
-  union CreatePostResponse = Post | PostError
-  union GetPostResponse = Post | PostError
+  union CreatePostResponse = Post | NotCreated
+  union GetPostResponse = Post | NotFound | UnknownError
 `);
 
 const getPosts = async () => {
@@ -58,15 +70,18 @@ const getPostById = async ({ id }) => {
     };
   } catch (e) {
     if (e instanceof DownstreamError) {
-      return {
-        __typename: 'PostError',
-        message: 'Post API responded with error',
-        code: e.code,
-      };
+      if (e.code === 404) {
+        return {
+          __typename: 'NotFound',
+          message: 'Post not found!!!!!!!',
+          code: e.code,
+        };
+      }
     }
     return {
-      __typename: 'PostError',
+      __typename: 'UnknownError',
       message: e.message,
+      code: e.code,
     };
   }
 };
